@@ -1,0 +1,13 @@
+{
+  "name": "three-js-project",
+  "version": "1.0.0",
+  "main": "index.js",
+  "script": {
+    "start": "node index.js"
+  },
+  "author": "Sevochka",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.122.0"
+  }
+}
