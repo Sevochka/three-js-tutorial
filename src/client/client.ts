@@ -1,5 +1,6 @@
 import * as THREE from '/build/three.module.js'
 import { OrbitControls } from '/jsm/controls/OrbitControls'
+import Stats from '/jsm/libs/stats.module';
 
 const scene: THREE.Scene = new THREE.Scene()
 
@@ -30,17 +31,23 @@ function onWindowResize() {
   render()
 };
 
+const stats = Stats();
+document.body.appendChild(stats.dom);
 const animate = function () {
   requestAnimationFrame(animate)
 
-  cube.rotation.x += 0.01;
-  cube.rotation.y += 0.01;
+  // cube.rotation.x += 0.01;
+  // cube.rotation.y += 0.01;
+  //
+  // renderer.render(scene, camera)
 
-  renderer.render(scene, camera)
+  stats.update();
 };
 
 function render(){
+  stats.begin();
   renderer.render(scene, camera);
+  stats.end();
 }
 render();
 // animate();
