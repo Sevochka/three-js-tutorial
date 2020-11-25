@@ -4,6 +4,8 @@ import Stats from '/jsm/libs/stats.module';
 import {GUI} from '/jsm/libs/dat.gui.module'
 
 const scene: THREE.Scene = new THREE.Scene()
+const axesHelper = new THREE.AxesHelper(5);
+scene.add(axesHelper);
 
 const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 
@@ -35,15 +37,28 @@ function onWindowResize() {
 const stats = Stats();
 document.body.appendChild(stats.dom);
 
+//Creating a GUI with folders
 const gui = new GUI();
 const cubeFolder = gui.addFolder("Cube");
-cubeFolder.add(cube.rotation, "x", 0, Math.PI * 2, 0.01);
-cubeFolder.add(cube.rotation, "y", 0, Math.PI * 2, 0.01);
-cubeFolder.add(cube.rotation, "z", 0, Math.PI * 2, 0.01);
-cubeFolder.open();
+const cubeRotationFolder = cubeFolder.addFolder('Rotation');
+cubeRotationFolder.add(cube.rotation, "x", 0, Math.PI * 2, 0.01);
+cubeRotationFolder.add(cube.rotation, "y", 0, Math.PI * 2, 0.01);
+cubeRotationFolder.add(cube.rotation, "z", 0, Math.PI * 2, 0.01);
+const cubePositionFolder = cubeFolder.addFolder('Position');
+cubePositionFolder.add(cube.position, "x", -10, 10);
+cubePositionFolder.add(cube.position, "y", -10, 10);
+cubePositionFolder.add(cube.position, "z", -10, 10);
+const cubeScaleFolder = cubeFolder.addFolder('Scale');
+cubeScaleFolder.add(cube.scale, "x", -5, 5, 0.1);
+cubeScaleFolder.add(cube.scale, "y", -5, 5, 0.1);
+cubeScaleFolder.add(cube.scale, "z", -5, 5, 0.1);
 const cameraFolder = gui.addFolder('Camera');
 cameraFolder.add(camera.position, "z", 0, 10, 0.01);
-cameraFolder.open();
+//Adding an visibility toggle
+cubeFolder.add(cube, 'visible', true);
+cubeFolder.open();
+
+
 const animate = function () {
   requestAnimationFrame(animate)
 
