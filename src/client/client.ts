@@ -10,7 +10,7 @@ const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
 const light = new THREE.PointLight(0xffffff, 2);
-light.position.set(10, 10, 10);
+light.position.set(0, 5, 10);
 scene.add(light);
 
 const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
@@ -20,42 +20,27 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
 
 const controls = new OrbitControls(camera, renderer.domElement)
+//controls.screenSpacePanning = true //so that panning up and down doesn't zoom in/out
 //controls.addEventListener('change', render)
 
-const boxGeometry: THREE.BoxGeometry = new THREE.BoxGeometry()
-const sphereGeometry: THREE.SphereGeometry = new THREE.SphereGeometry()
-const icosahedronGeometry: THREE.IcosahedronGeometry = new THREE.IcosahedronGeometry(1, 0)
-const planeGeometry: THREE.PlaneGeometry = new THREE.PlaneGeometry()
-const torusKnotGeometry: THREE.TorusKnotGeometry = new THREE.TorusKnotGeometry()
+const planeGeometry: THREE.PlaneGeometry = new THREE.PlaneGeometry()//3.6, 1.8)
 
-const material: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial()
+const material: THREE.MeshPhongMaterial = new THREE.MeshPhongMaterial()
 
 const texture = new THREE.TextureLoader().load("img/grid.png")
+//const texture = new THREE.TextureLoader().load("img/worldColour.5400x2700.jpg")
 material.map = texture
-const envTexture = new THREE.CubeTextureLoader().load(["img/px_50.png", "img/nx_50.png", "img/py_50.png", "img/ny_50.png", "img/pz_50.png", "img/nz_50.png"])
-envTexture.mapping = THREE.CubeReflectionMapping
-//envTexture.mapping = THREE.CubeRefractionMapping
-material.envMap = envTexture
+// const envTexture = new THREE.CubeTextureLoader().load(["img/px_50.png", "img/nx_50.png", "img/py_50.png", "img/ny_50.png", "img/pz_50.png", "img/nz_50.png"])
+//const envTexture = new THREE.CubeTextureLoader().load(["img/px_eso0932a.jpg", "img/nx_eso0932a.jpg", "img/py_eso0932a.jpg", "img/ny_eso0932a.jpg", "img/pz_eso0932a.jpg", "img/nz_eso0932a.jpg"])
+// envTexture.mapping = THREE.CubeReflectionMapping
+// material.envMap = envTexture
 
-const cube: THREE.Mesh = new THREE.Mesh(boxGeometry, material)
-cube.position.x = 5
-scene.add(cube)
-
-const sphere: THREE.Mesh = new THREE.Mesh(sphereGeometry, material)
-sphere.position.x = 3
-scene.add(sphere)
-
-const icosahedron: THREE.Mesh = new THREE.Mesh(icosahedronGeometry, material)
-icosahedron.position.x = 0
-scene.add(icosahedron)
+const specularTexture = new THREE.TextureLoader().load("img/grayscale-test.png")
+//const specularTexture = new THREE.TextureLoader().load("img/earthSpecular.jpg")
+material.specularMap = specularTexture
 
 const plane: THREE.Mesh = new THREE.Mesh(planeGeometry, material)
-plane.position.x = -2
 scene.add(plane)
-
-const torusKnot: THREE.Mesh = new THREE.Mesh(torusKnotGeometry, material)
-torusKnot.position.x = -5
-scene.add(torusKnot)
 
 camera.position.z = 3
 
@@ -75,7 +60,12 @@ var options = {
     "FrontSide": THREE.FrontSide,
     "BackSide": THREE.BackSide,
     "DoubleSide": THREE.DoubleSide,
-  }
+  },
+  combine: {
+    "MultiplyOperation": THREE.MultiplyOperation,
+    "MixOperation": THREE.MixOperation,
+    "AddOperation": THREE.AddOperation
+  },
 }
 const gui = new GUI()
 
@@ -87,25 +77,29 @@ materialFolder.add(material, 'depthWrite')
 materialFolder.add(material, 'alphaTest', 0, 1, 0.01).onChange(() => updateMaterial())
 materialFolder.add(material, 'visible')
 materialFolder.add(material, 'side', options.side).onChange(() => updateMaterial())
-materialFolder.open()
+//materialFolder.open()
 
 var data = {
   color: material.color.getHex(),
-  emissive: material.emissive.getHex()
+  emissive: material.emissive.getHex(),
+  specular: material.specular.getHex()
 };
 
-var meshStandardMaterialFolder = gui.addFolder('THREE.MeshStandardMaterial');
+var meshPhongMaterialFolder = gui.addFolder('THREE.MeshPhongMaterial');
 
-meshStandardMaterialFolder.addColor(data, 'color').onChange(() => { material.color.setHex(Number(data.color.toString().replace('#', '0x'))) });
-meshStandardMaterialFolder.addColor(data, 'emissive').onChange(() => { material.emissive.setHex(Number(data.emissive.toString().replace('#', '0x'))) });
-meshStandardMaterialFolder.add(material, 'wireframe');
-meshStandardMaterialFolder.add(material, 'flatShading').onChange(() => updateMaterial())
-meshStandardMaterialFolder.add( material, 'roughness', 0, 1 );
-meshStandardMaterialFolder.add( material, 'metalness', 0, 1 );
-meshStandardMaterialFolder.open()
+meshPhongMaterialFolder.addColor(data, 'color').onChange(() => { material.color.setHex(Number(data.color.toString().replace('#', '0x'))) })
+meshPhongMaterialFolder.addColor(data, 'emissive').onChange(() => { material.emissive.setHex(Number(data.emissive.toString().replace('#', '0x'))) })
+meshPhongMaterialFolder.addColor(data, 'specular').onChange(() => { material.specular.setHex(Number(data.specular.toString().replace('#', '0x'))) })
+meshPhongMaterialFolder.add(material, 'shininess', 0, 1024)
+meshPhongMaterialFolder.add(material, 'wireframe')
+meshPhongMaterialFolder.add(material, 'flatShading').onChange(() => updateMaterial())
+meshPhongMaterialFolder.add(material, 'combine', options.combine).onChange(() => updateMaterial())
+meshPhongMaterialFolder.add(material, 'reflectivity', 0, 1)
+meshPhongMaterialFolder.open()
 
 function updateMaterial() {
   material.side = Number(material.side)
+  material.combine = Number(material.combine)
   material.needsUpdate = true
 }
 
