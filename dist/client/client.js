@@ -5,8 +5,10 @@ import { GUI } from '/jsm/libs/dat.gui.module';
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
-var light = new THREE.AmbientLight();
+var light = new THREE.DirectionalLight();
 scene.add(light);
+var helper = new THREE.DirectionalLightHelper(light);
+scene.add(helper);
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -49,6 +51,10 @@ torus[1].position.x = -4;
 torus[2].position.x = 0;
 torus[3].position.x = 4;
 torus[4].position.x = 8;
+// light.target = torus[0]
+// light.target.position.set(0, 10, 0)
+// scene.add(light.target)
+light.target = torus[4];
 scene.add(torus[0]);
 scene.add(torus[1]);
 scene.add(torus[2]);
@@ -72,8 +78,11 @@ const gui = new GUI();
 const lightFolder = gui.addFolder('THREE.Light');
 lightFolder.addColor(data, 'color').onChange(() => { light.color.setHex(Number(data.color.toString().replace('#', '0x'))); });
 lightFolder.add(light, 'intensity', 0, 1, 0.01);
-const ambientLightFolder = gui.addFolder('THREE.AmbientLight');
-ambientLightFolder.open();
+const directionalLightFolder = gui.addFolder('THREE.DirectionalLight');
+directionalLightFolder.add(light.position, "x", -100, 100, 0.01);
+directionalLightFolder.add(light.position, "y", -100, 100, 0.01);
+directionalLightFolder.add(light.position, "z", -100, 100, 0.01);
+directionalLightFolder.open();
 const meshesFolder = gui.addFolder('Meshes');
 meshesFolder.add(data, 'mapsEnabled').onChange(() => {
     material.forEach(m => {
@@ -88,6 +97,7 @@ meshesFolder.add(data, 'mapsEnabled').onChange(() => {
 });
 var animate = function () {
     requestAnimationFrame(animate);
+    helper.update();
     torus.forEach(t => {
         t.rotation.y += .01;
     });
