@@ -1,5 +1,6 @@
 import * as THREE from '/build/three.module.js'
-import { DragControls } from '/jsm/controls/DragControls'
+import { OrbitControls } from '/jsm/controls/OrbitControls'
+import { OBJLoader } from '/jsm/loaders/OBJLoader'
 import Stats from '/jsm/libs/stats.module'
 
 const scene: THREE.Scene = new THREE.Scene()
@@ -7,45 +8,39 @@ const axesHelper = new THREE.AxesHelper(5)
 scene.add(axesHelper)
 
 var light = new THREE.PointLight();
-light.position.set(10, 10, 10)
+light.position.set(2.5, 7.5, 15)
 scene.add(light);
 
 const camera: THREE.PerspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+camera.position.z = 3
 
 const renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer()
 renderer.setSize(window.innerWidth, window.innerHeight)
 document.body.appendChild(renderer.domElement)
 
-const geometry: THREE.BoxGeometry = new THREE.BoxGeometry()
-//const material: THREE.MeshPhongMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true })
-//const cube: THREE.Mesh = new THREE.Mesh(geometry, material)
-//scene.add(cube)
+const controls = new OrbitControls(camera, renderer.domElement)
 
-const material: THREE.MeshPhongMaterial[] = [
-  new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true }),
-  new THREE.MeshPhongMaterial({ color: 0x00ff00, transparent: true }),
-  new THREE.MeshPhongMaterial({ color: 0x0000ff, transparent: true })
-]
+const material: THREE.MeshBasicMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true })
 
-const cubes: THREE.Mesh[] = [
-  new THREE.Mesh(geometry, material[0]),
-  new THREE.Mesh(geometry, material[1]),
-  new THREE.Mesh(geometry, material[2])
-]
-cubes[0].position.x = -2
-cubes[1].position.x = 0
-cubes[2].position.x = 2
-cubes.forEach(c => scene.add(c))
-
-const controls = new DragControls(cubes, camera, renderer.domElement)
-controls.addEventListener('dragstart', function (event) {
-    event.object.material.opacity = 0.33
-})
-controls.addEventListener('dragend', function (event) {
-    event.object.material.opacity = 1
-})
-
-camera.position.z = 3
+const objLoader: OBJLoader = new OBJLoader();
+objLoader.load(
+  'models/cube.obj',
+  (object) => {
+    // (<THREE.Mesh>object.children[0]).material = material
+    object.traverse(function (child) {
+     if ((<THREE.Mesh>child).isMesh) {
+         (<THREE.Mesh>child).material = material
+     }
+    })
+    scene.add(object);
+  },
+  (xhr) => {
+    console.log((xhr.loaded / xhr.total * 100) + '% loaded')
+  },
+  (error) => {
+    console.log(error);
+  }
+)
 
 window.addEventListener('resize', onWindowResize, false)
 function onWindowResize() {
@@ -61,13 +56,7 @@ document.body.appendChild(stats.dom)
 var animate = function () {
   requestAnimationFrame(animate)
 
-  cubes[0].rotation.x += 0.010;
-  cubes[0].rotation.y += 0.011;
-  cubes[1].rotation.x += 0.012;
-  cubes[1].rotation.y += 0.013;
-  cubes[2].rotation.x += 0.014;
-  cubes[2].rotation.y += 0.015;
-  //controls.update()
+  controls.update()
 
   render()
 
@@ -77,5 +66,4 @@ var animate = function () {
 function render() {
   renderer.render(scene, camera)
 }
-
 animate();
