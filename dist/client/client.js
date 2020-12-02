@@ -1,24 +1,25 @@
 import * as THREE from '/build/three.module.js';
 import { OrbitControls } from '/jsm/controls/OrbitControls';
 import { GLTFLoader } from '/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from '/jsm/loaders/DRACOLoader';
 import Stats from '/jsm/libs/stats.module';
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
-var light = new THREE.SpotLight();
-light.position.set(5, 5, 5);
-scene.add(light);
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 2;
 const renderer = new THREE.WebGLRenderer();
 renderer.physicallyCorrectLights = true;
 renderer.shadowMap.enabled = true;
-renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
+var dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('/js/libs/draco/');
+dracoLoader.setDecoderConfig({ type: 'js' });
 const loader = new GLTFLoader();
-loader.load('models/monkey.glb', function (gltf) {
+loader.setDRACOLoader(dracoLoader);
+loader.load('models/monkey_compressed.glb', function (gltf) {
     gltf.scene.traverse(function (child) {
         if (child.isMesh) {
             let m = child;
@@ -28,15 +29,13 @@ loader.load('models/monkey.glb', function (gltf) {
         if (child.isLight) {
             let l = child;
             l.castShadow = true;
-            //l.shadow.bias = -.003
+            l.shadow.bias = -.003;
             l.shadow.mapSize.width = 2048;
             l.shadow.mapSize.height = 2048;
         }
     });
     scene.add(gltf.scene);
 }, (xhr) => {
-    let element = document.querySelector('.black');
-    element.style.display = 'none';
     console.log((xhr.loaded / xhr.total * 100) + '% loaded');
 }, (error) => {
     console.log(error);
