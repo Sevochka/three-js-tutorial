@@ -1,40 +1,72 @@
 import * as THREE from '/build/three.module.js';
 import { OrbitControls } from '/jsm/controls/OrbitControls';
-import { GLTFLoader } from '/jsm/loaders/GLTFLoader';
-import { DRACOLoader } from '/jsm/loaders/DRACOLoader';
+import { FBXLoader } from '/jsm/loaders/FBXLoader';
 import Stats from '/jsm/libs/stats.module';
+import { GUI } from '/jsm/libs/dat.gui.module';
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
+var light = new THREE.PointLight();
+light.position.set(2.5, 7.5, 15);
+scene.add(light);
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 2;
+camera.position.set(0.8, 1.4, 1.0);
 const renderer = new THREE.WebGLRenderer();
-renderer.physicallyCorrectLights = true;
-renderer.shadowMap.enabled = true;
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
-var dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath('/js/libs/draco/');
-dracoLoader.setDecoderConfig({ type: 'js' });
-const loader = new GLTFLoader();
-loader.setDRACOLoader(dracoLoader);
-loader.load('models/monkey_compressed.glb', function (gltf) {
-    gltf.scene.traverse(function (child) {
-        if (child.isMesh) {
-            let m = child;
-            m.receiveShadow = true;
-            m.castShadow = true;
-        }
-        if (child.isLight) {
-            let l = child;
-            l.castShadow = true;
-            l.shadow.bias = -.003;
-            l.shadow.mapSize.width = 2048;
-            l.shadow.mapSize.height = 2048;
-        }
+controls.screenSpacePanning = true;
+controls.target.set(0, 1, 0);
+let mixer;
+let modelReady = false;
+let animationActions = new Array();
+let activeAction;
+let lastAction;
+const fbxLoader = new FBXLoader();
+fbxLoader.load('models/xbot.fbx', (object) => {
+    object.scale.set(.01, .01, .01);
+    mixer = new THREE.AnimationMixer(object);
+    let animationAction = mixer.clipAction(object.animations[0]);
+    animationActions.push(animationAction);
+    animationsFolder.add(animations, "default");
+    activeAction = animationActions[0];
+    scene.add(object);
+    // add an animation from another file
+    fbxLoader.load('models/belly-dance.fbx', (object) => {
+        object.animations[0].tracks.shift();
+        let animationAction = mixer.clipAction(object.animations[0]);
+        animationActions.push(animationAction);
+        animationsFolder.add(animations, "samba");
+        //add an animation from another file
+        fbxLoader.load('models/jumping-down.fbx', (object) => {
+            console.log("loaded bellydance");
+            let animationAction = mixer.clipAction(object.animations[0]);
+            animationActions.push(animationAction);
+            animationsFolder.add(animations, "bellydance");
+            // add an animation from another file
+            fbxLoader.load('models/samba-dancing.fbx', (object) => {
+                console.log("loaded goofyrunning");
+                object.animations[0].tracks.shift(); //delete the specific track that moves the object forward while running
+                //console.dir((object as any).animations[0])
+                let animationAction = mixer.clipAction(object.animations[0]);
+                animationActions.push(animationAction);
+                animationsFolder.add(animations, "goofyrunning");
+                modelReady = true;
+            }, (xhr) => {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            }, (error) => {
+                console.log(error);
+            });
+        }, (xhr) => {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        }, (error) => {
+            console.log(error);
+        });
+    }, (xhr) => {
+        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+    }, (error) => {
+        console.log(error);
     });
-    scene.add(gltf.scene);
 }, (xhr) => {
     console.log((xhr.loaded / xhr.total * 100) + '% loaded');
 }, (error) => {
@@ -49,9 +81,40 @@ function onWindowResize() {
 }
 const stats = Stats();
 document.body.appendChild(stats.dom);
+var animations = {
+    default: function () {
+        setAction(animationActions[0]);
+    },
+    samba: function () {
+        setAction(animationActions[1]);
+    },
+    bellydance: function () {
+        setAction(animationActions[2]);
+    },
+    goofyrunning: function () {
+        setAction(animationActions[3]);
+    },
+};
+const setAction = (toAction) => {
+    if (toAction != activeAction) {
+        lastAction = activeAction;
+        activeAction = toAction;
+        lastAction.stop();
+        //lastAction.fadeOut(1)
+        activeAction.reset();
+        //activeAction.fadeIn(1)
+        activeAction.play();
+    }
+};
+const gui = new GUI();
+const animationsFolder = gui.addFolder("Animations");
+animationsFolder.open();
+const clock = new THREE.Clock();
 var animate = function () {
     requestAnimationFrame(animate);
     controls.update();
+    if (modelReady)
+        mixer.update(clock.getDelta());
     render();
     stats.update();
 };
