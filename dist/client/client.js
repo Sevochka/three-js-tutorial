@@ -1,15 +1,14 @@
 import * as THREE from '/build/three.module.js';
 import { OrbitControls } from '/jsm/controls/OrbitControls';
-import { GLTFLoader } from '/jsm/loaders/GLTFLoader';
 import Stats from '/jsm/libs/stats.module';
 import { GUI } from '/jsm/libs/dat.gui.module';
-import { TWEEN } from '/jsm/libs/tween.module.min';
+import '/cannon/cannon.min';
 const scene = new THREE.Scene();
 const axesHelper = new THREE.AxesHelper(5);
 scene.add(axesHelper);
 var light1 = new THREE.SpotLight();
-light1.position.set(2.5, 5, 2.5);
-light1.angle = Math.PI / 8;
+light1.position.set(2.5, 5, 5);
+light1.angle = Math.PI / 4;
 light1.penumbra = 0.5;
 light1.castShadow = true;
 light1.shadow.mapSize.width = 1024;
@@ -18,8 +17,8 @@ light1.shadow.camera.near = 0.5;
 light1.shadow.camera.far = 20;
 scene.add(light1);
 var light2 = new THREE.SpotLight();
-light2.position.set(-2.5, 5, 2.5);
-light2.angle = Math.PI / 8;
+light2.position.set(-2.5, 5, 5);
+light2.angle = Math.PI / 4;
 light2.penumbra = 0.5;
 light2.castShadow = true;
 light2.shadow.mapSize.width = 1024;
@@ -27,86 +26,110 @@ light2.shadow.mapSize.height = 1024;
 light2.shadow.camera.near = 0.5;
 light2.shadow.camera.far = 20;
 scene.add(light2);
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000);
-camera.position.set(0.8, 1.4, 1.0);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.screenSpacePanning = true;
-controls.target.set(0, 1, 0);
-let sceneMeshes = new Array();
-const planeGeometry = new THREE.PlaneGeometry(25, 25);
-const texture = new THREE.TextureLoader().load("img/grid.png");
-const plane = new THREE.Mesh(planeGeometry, new THREE.MeshPhongMaterial({ map: texture }));
-plane.rotateX(-Math.PI / 2);
-plane.receiveShadow = true;
-scene.add(plane);
-sceneMeshes.push(plane);
-let mixer;
-let modelReady = false;
-let modelMesh;
-let animationActions = new Array();
-let activeAction;
-let lastAction;
-const gltfLoader = new GLTFLoader();
-gltfLoader.load('models/xbot.glb', (gltf) => {
-    gltf.scene.traverse(function (child) {
-        if (child.isMesh) {
-            let m = child;
-            m.castShadow = true;
-            m.frustumCulled = false;
-            m.geometry.computeVertexNormals();
-        }
-    });
-    mixer = new THREE.AnimationMixer(gltf.scene);
-    let animationAction = mixer.clipAction(gltf.animations[0]);
-    animationActions.push(animationAction);
-    animationsFolder.add(animations, "default");
-    activeAction = animationActions[0];
-    scene.add(gltf.scene);
-    modelMesh = gltf.scene;
-    //add an animation from another file
-    gltfLoader.load('models/jump.glb', (gltf) => {
-        console.log("loaded samba");
-        let animationAction = mixer.clipAction(gltf.animations[0]);
-        animationActions.push(animationAction);
-        animationsFolder.add(animations, "samba");
-        //add an animation from another file
-        gltfLoader.load('models/belly.glb', (gltf) => {
-            console.log("loaded bellydance");
-            let animationAction = mixer.clipAction(gltf.animations[0]);
-            animationActions.push(animationAction);
-            animationsFolder.add(animations, "bellydance");
-            //add an animation from another file
-            gltfLoader.load('models/samba.glb', (gltf) => {
-                console.log("loaded goofyrunning");
-                gltf.animations[0].tracks.shift(); //delete the specific track that moves the object forward while running
-                let animationAction = mixer.clipAction(gltf.animations[0]);
-                animationActions.push(animationAction);
-                animationsFolder.add(animations, "goofyrunning");
-                modelReady = true;
-            }, (xhr) => {
-                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-            }, (error) => {
-                console.log(error);
-            });
-        }, (xhr) => {
-            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-        }, (error) => {
-            console.log(error);
-        });
-    }, (xhr) => {
-        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-    }, (error) => {
-        console.log(error);
-    });
-}, (xhr) => {
-    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-}, (error) => {
-    console.log(error);
+const world = new CANNON.World();
+world.gravity.set(0, -9.82, 0);
+world.broadphase = new CANNON.NaiveBroadphase();
+world.solver.iterations = 10;
+world.allowSleep = true;
+const normalMaterial = new THREE.MeshNormalMaterial();
+const phongMaterial = new THREE.MeshPhongMaterial();
+const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+const cubeMesh = new THREE.Mesh(cubeGeometry, normalMaterial);
+cubeMesh.position.x = -3;
+cubeMesh.position.y = 3;
+cubeMesh.castShadow = true;
+scene.add(cubeMesh);
+const cubeShape = new CANNON.Box(new CANNON.Vec3(.5, .5, .5));
+const cubeBody = new CANNON.Body({ mass: 1 });
+cubeBody.addShape(cubeShape);
+cubeBody.position.x = cubeMesh.position.x;
+cubeBody.position.y = cubeMesh.position.y;
+cubeBody.position.z = cubeMesh.position.z;
+world.addBody(cubeBody);
+const sphereGeometry = new THREE.SphereGeometry();
+const sphereMesh = new THREE.Mesh(sphereGeometry, normalMaterial);
+sphereMesh.position.x = -1;
+sphereMesh.position.y = 3;
+sphereMesh.castShadow = true;
+scene.add(sphereMesh);
+const sphereShape = new CANNON.Sphere(1);
+const sphereBody = new CANNON.Body({ mass: 1 });
+sphereBody.addShape(sphereShape);
+sphereBody.position.x = sphereMesh.position.x;
+sphereBody.position.y = sphereMesh.position.y;
+sphereBody.position.z = sphereMesh.position.z;
+world.addBody(sphereBody);
+const icosahedronGeometry = new THREE.IcosahedronGeometry(1, 0);
+const icosahedronMesh = new THREE.Mesh(icosahedronGeometry, normalMaterial);
+icosahedronMesh.position.x = 1;
+icosahedronMesh.position.y = 3;
+icosahedronMesh.castShadow = true;
+scene.add(icosahedronMesh);
+const icosahedronPoints = icosahedronMesh.geometry.vertices.map(function (v) {
+    return new CANNON.Vec3(v.x, v.y, v.z);
 });
+const icosahedronFaces = icosahedronMesh.geometry.faces.map(function (f) {
+    return [f.a, f.b, f.c];
+});
+// @ts-ignore
+const icosahedronShape = new CANNON.ConvexPolyhedron(icosahedronPoints, icosahedronFaces);
+const icosahedronBody = new CANNON.Body({ mass: 1 });
+icosahedronBody.addShape(icosahedronShape);
+icosahedronBody.position.x = icosahedronMesh.position.x;
+icosahedronBody.position.y = icosahedronMesh.position.y;
+icosahedronBody.position.z = icosahedronMesh.position.z;
+world.addBody(icosahedronBody);
+const torusKnotGeometry = new THREE.TorusKnotGeometry();
+const torusKnotMesh = new THREE.Mesh(torusKnotGeometry, normalMaterial);
+torusKnotMesh.position.x = 4;
+torusKnotMesh.position.y = 3;
+torusKnotMesh.castShadow = true;
+scene.add(torusKnotMesh);
+const torusKnotPoints = torusKnotMesh.geometry.vertices.map(function (v) {
+    return new CANNON.Vec3(v.x, v.y, v.z);
+});
+const torusKnotFaces = torusKnotMesh.geometry.faces.map(function (f) {
+    return [f.a, f.b, f.c];
+});
+// @ts-ignore
+// const torusKnotShape = new CANNON.ConvexPolyhedron(torusKnotPoints, torusKnotFaces)
+const torusKnotShape = CreateTrimesh(torusKnotMesh.geometry);
+const torusKnotBody = new CANNON.Body({ mass: 1 });
+torusKnotBody.addShape(torusKnotShape);
+torusKnotBody.position.x = torusKnotMesh.position.x;
+torusKnotBody.position.y = torusKnotMesh.position.y;
+torusKnotBody.position.z = torusKnotMesh.position.z;
+world.addBody(torusKnotBody);
+function CreateTrimesh(geometry) {
+    if (!geometry.attributes) {
+        geometry = new THREE.BufferGeometry().fromGeometry(geometry);
+    }
+    const vertices = geometry.attributes.position.array;
+    const indices = Object.keys(vertices).map(Number);
+    // @ts-ignore
+    return new CANNON.Trimesh(vertices, indices);
+}
+const planeGeometry = new THREE.PlaneGeometry(25, 25);
+const planeMesh = new THREE.Mesh(planeGeometry, phongMaterial);
+planeMesh.rotateX(-Math.PI / 2);
+planeMesh.receiveShadow = true;
+scene.add(planeMesh);
+const planeShape = new CANNON.Plane();
+const planeBody = new CANNON.Body({ mass: 0 });
+planeBody.addShape(planeShape);
+planeBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+world.addBody(planeBody);
+camera.position.y = 4;
+camera.position.z = 4;
+controls.target.y = 2;
 window.addEventListener('resize', onWindowResize, false);
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -114,85 +137,33 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     render();
 }
-const raycaster = new THREE.Raycaster();
-const targetQuaternion = new THREE.Quaternion();
-renderer.domElement.addEventListener('dblclick', onDoubleClick, false);
-function onDoubleClick(event) {
-    const mouse = {
-        x: (event.clientX / renderer.domElement.clientWidth) * 2 - 1,
-        y: -(event.clientY / renderer.domElement.clientHeight) * 2 + 1
-    };
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(sceneMeshes, false);
-    if (intersects.length > 0) {
-        const p = intersects[0].point;
-        const distance = modelMesh.position.distanceTo(p);
-        //modelMesh.lookAt(p);
-        const rotationMatrix = new THREE.Matrix4();
-        rotationMatrix.lookAt(p, modelMesh.position, modelMesh.up);
-        targetQuaternion.setFromRotationMatrix(rotationMatrix);
-        setAction(animationActions[3]);
-        TWEEN.removeAll();
-        new TWEEN.Tween(modelMesh.position)
-            .to({
-            x: p.x,
-            y: p.y,
-            z: p.z
-        }, 1000 / 2 * distance) //walks 2 meters a second * the distance
-            .onUpdate(() => {
-            controls.target.set(modelMesh.position.x, modelMesh.position.y + 1, modelMesh.position.z);
-            light1.target = modelMesh;
-            light2.target = modelMesh;
-        })
-            .start()
-            .onComplete(() => {
-            setAction(animationActions[1]);
-            activeAction.clampWhenFinished = true;
-            activeAction.loop = THREE.LoopOnce;
-        });
-    }
-}
 const stats = Stats();
 document.body.appendChild(stats.dom);
-var animations = {
-    default: function () {
-        setAction(animationActions[0]);
-    },
-    samba: function () {
-        setAction(animationActions[1]);
-    },
-    bellydance: function () {
-        setAction(animationActions[2]);
-    },
-    goofyrunning: function () {
-        setAction(animationActions[3]);
-    },
-};
-const setAction = (toAction) => {
-    if (toAction != activeAction) {
-        lastAction = activeAction;
-        activeAction = toAction;
-        //lastAction.stop()
-        lastAction.fadeOut(.2);
-        activeAction.reset();
-        activeAction.fadeIn(.2);
-        activeAction.play();
-    }
-};
 const gui = new GUI();
-const animationsFolder = gui.addFolder("Animations");
-animationsFolder.open();
+const physicsFolder = gui.addFolder("Physics");
+physicsFolder.add(world.gravity, "x", -10.0, 10.0, 0.1);
+physicsFolder.add(world.gravity, "y", -10.0, 10.0, 0.1);
+physicsFolder.add(world.gravity, "z", -10.0, 10.0, 0.1);
+physicsFolder.open();
+//
+// const positionFolder = gui.addFolder("Position")
+// positionFolder.add(sphereBody.position, "x", -10.0, 10.0, 0.1)
 const clock = new THREE.Clock();
 var animate = function () {
     requestAnimationFrame(animate);
     controls.update();
-    if (modelReady) {
-        mixer.update(clock.getDelta());
-        if (!modelMesh.quaternion.equals(targetQuaternion)) {
-            modelMesh.quaternion.rotateTowards(targetQuaternion, clock.getDelta() * 1000);
-        }
-    }
-    TWEEN.update();
+    let delta = clock.getDelta();
+    // if (delta > .1) delta = .1
+    world.step(delta);
+    // Copy coordinates from Cannon.js to Three.js
+    cubeMesh.position.set(cubeBody.position.x, cubeBody.position.y, cubeBody.position.z);
+    cubeMesh.quaternion.set(cubeBody.quaternion.x, cubeBody.quaternion.y, cubeBody.quaternion.z, cubeBody.quaternion.w);
+    sphereMesh.position.set(sphereBody.position.x, sphereBody.position.y, sphereBody.position.z);
+    sphereMesh.quaternion.set(sphereBody.quaternion.x, sphereBody.quaternion.y, sphereBody.quaternion.z, sphereBody.quaternion.w);
+    icosahedronMesh.position.set(icosahedronBody.position.x, icosahedronBody.position.y, icosahedronBody.position.z);
+    icosahedronMesh.quaternion.set(icosahedronBody.quaternion.x, icosahedronBody.quaternion.y, icosahedronBody.quaternion.z, icosahedronBody.quaternion.w);
+    torusKnotMesh.position.set(torusKnotBody.position.x, torusKnotBody.position.y, torusKnotBody.position.z);
+    torusKnotMesh.quaternion.set(torusKnotBody.quaternion.x, torusKnotBody.quaternion.y, torusKnotBody.quaternion.z, torusKnotBody.quaternion.w);
     render();
     stats.update();
 };
